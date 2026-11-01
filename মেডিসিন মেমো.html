@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>মেডিসিন মেমো</title>
+<style>
+:root{--bg:#f4f7f6;--card:#fff;--tx:#17302b;--mut:#6b7f7a;--pri:#0f8a6d;--bd:#d9e3e0;--dan:#c0392b;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#101a18;--card:#182623;--tx:#e6f1ee;--mut:#8fa6a0;--pri:#2cc29c;--bd:#2a3d39;--dan:#ef6b5d;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:"Hind Siliguri","Noto Sans Bengali",system-ui,sans-serif;font-size:16px}
+.w{max-width:760px;margin:0 auto;padding:14px}
+h1{font-size:22px;margin:6px 0 12px;color:var(--pri)}
+h2{font-size:17px;margin:0 0 10px}
+.c{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin-bottom:14px}
+.r{display:flex;gap:8px;flex-wrap:wrap}
+.r>*{flex:1 1 140px}
+input,select{width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+button{padding:10px 14px;border:0;border-radius:8px;background:var(--pri);color:#fff;font:inherit;cursor:pointer}
+button.g{background:transparent;color:var(--dan);border:1px solid var(--bd);padding:4px 10px}
+button.s{background:var(--mut)}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;margin-top:8px}
+th,td{padding:8px 6px;border-bottom:1px solid var(--bd);text-align:left;white-space:nowrap}
+.t{display:flex;justify-content:space-between;padding:4px 0}
+.big{font-size:20px;font-weight:700;color:var(--pri)}
+.m{color:var(--mut);font-size:14px}
+#pr{display:none}
+@media print{body *{visibility:hidden}#pr,#pr *{visibility:visible}#pr{display:block;position:absolute;left:0;top:0;width:100%;color:#000;background:#fff;padding:16px}#pr table th,#pr table td{border-bottom:1px solid #999;color:#000}}
+</style>
+</head>
+<body>
+<div class="w">
+<h1>💊 মেডিসিন মেমো</h1>
+<div class="c"><h2>🏪 দোকানের তথ্য (মেমোতে ছাপা হবে)</h2><div class="r"><input id="sn" placeholder="দোকানের নাম"><input id="sa" placeholder="ঠিকানা"><input id="sp" placeholder="মোবাইল নম্বর"><button onclick="saveShop()">সেভ</button></div></div>
+
+<div class="c">
+<h2>নতুন মেমো</h2>
+<div class="r"><input id="cn" placeholder="কাস্টমারের নাম"><input id="cp" placeholder="মোবাইল নম্বর"></div>
+<h2 style="margin-top:14px">ওষুধ যোগ করুন</h2>
+<div class="r">
+<select id="sel" onchange="fill()"></select>
+<input id="q" type="number" min="1" value="1" placeholder="পিস">
+<input id="p" type="number" min="0" step="0.01" placeholder="দাম/পিস (৳)">
+<button onclick="addItem()">মেমোতে যোগ</button>
+</div>
+<div class="tbl"><table><thead><tr><th>ওষুধ</th><th>পিস</th><th>দাম</th><th>মোট</th><th></th></tr></thead><tbody id="tb"></tbody></table></div>
+<div class="r" style="margin-top:12px;align-items:center"><span>ডিসকাউন্ট (৳):</span><input id="ds" type="number" min="0" value="0" oninput="calc()"></div>
+<div class="t m" style="margin-top:8px"><span>সাবটোটাল</span><span id="sub">৳0</span></div>
+<div class="t big"><span>সর্বমোট</span><span id="tot">৳0</span></div>
+<div class="r" style="margin-top:10px"><button onclick="doPrint()">🖨️ প্রিন্ট ও বিক্রি সম্পূর্ণ</button><button class="s" onclick="clearMemo()">নতুন মেমো</button></div>
+</div>
+
+<div class="c">
+<h2>নতুন ওষুধ সেভ করুন</h2>
+<div class="r">
+<input id="mn" placeholder="ওষুধের নাম (যেমন: Napa 500mg)">
+<input id="mp" type="number" min="0" step="0.01" placeholder="দাম/পিস (৳)"><input id="ms" type="number" min="0" placeholder="স্টক (পিস)">
+<button onclick="addMed()">সেভ করুন</button>
+</div>
+<div class="tbl"><table><tbody id="ml"></tbody></table></div></div><div class="c"><h2>📊 বিক্রির রিপোর্ট</h2><div id="rp"></div><button class="g" onclick="clearSales()" style="margin-top:8px">রিপোর্ট মুছুন</button>
+</div>
+</div>
+
+<div id="pr"></div>
+
+<script>
+var meds=[{n:"Napa 500mg",p:1.2,s:100},{n:"Seclo 20mg",p:6,s:50},{n:"Histacin 10mg",p:2,s:80}];
+var shop={n:"",a:"",ph:""},sales=[];
+try{var s1=localStorage.getItem("shop");if(s1)shop=JSON.parse(s1);var s2=localStorage.getItem("sales");if(s2)sales=JSON.parse(s2)}catch(e){}
+var items=[];
+try{var s=localStorage.getItem("meds");if(s){var a=JSON.parse(s);if(a&&a.length)meds=a}}catch(e){}
+function save(){try{localStorage.setItem("meds",JSON.stringify(meds))}catch(e){}}
+function bn(n){return String(n).replace(/\d/g,function(d){return "০১২৩৪৫৬৭৮৯"[d]})}
+function f(n){return "৳"+bn((Math.round(n*100)/100).toString())}
+function esc(t){var d=document.createElement("div");d.textContent=t;return d.innerHTML}
+function render(){
+ var sel=document.getElementById("sel");
+ sel.innerHTML=meds.map(function(m,i){return '<option value="'+i+'">'+esc(m.n)+' (স্টক: '+bn(m.s||0)+')</option>'}).join("");
+ document.getElementById("ml").innerHTML=meds.map(function(m,i){return '<tr><td>'+esc(m.n)+'</td><td>'+f(m.p)+'/পিস</td><td style="color:'+((m.s||0)<=10?'var(--dan)':'inherit')+'">স্টক: '+bn(m.s||0)+'</td><td><button class="g" style="color:var(--pri)" onclick="addStock('+i+')">+স্টক</button> <button class="g" onclick="delMed('+i+')">মুছুন</button></td></tr>'}).join("");
+ fill();
+}
+function val(id){return document.getElementById(id).value.trim()}
+function saveShop(){shop={n:val("sn"),a:val("sa"),ph:val("sp")};try{localStorage.setItem("shop",JSON.stringify(shop))}catch(e){}alert("সেভ হয়েছে")}
+function loadShop(){document.getElementById("sn").value=shop.n||"";document.getElementById("sa").value=shop.a||"";document.getElementById("sp").value=shop.ph||""}
+function addStock(i){var k=parseInt(prompt(meds[i].n+" — কত পিস স্টক যোগ করবেন?"));if(!k)return;meds[i].s=(meds[i].s||0)+k;save();render()}
+function recordSale(s,d){
+ items.forEach(function(x){for(var j=0;j<meds.length;j++){if(meds[j].n===x.n){meds[j].s=Math.max(0,(meds[j].s||0)-x.q);break}}});
+ sales.push({t:Date.now(),c:val("cn"),tot:Math.max(0,s-d)});
+ if(sales.length>500)sales=sales.slice(-500);
+ save();try{localStorage.setItem("sales",JSON.stringify(sales))}catch(e){}
+ render();report();
+}
+function report(){
+ var now=new Date(),ds=now.toDateString(),tm=0,td=0,cnt=0;
+ sales.forEach(function(x){var d=new Date(x.t);if(d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear())tm+=x.tot;if(d.toDateString()===ds){td+=x.tot;cnt++}});
+ var low=meds.filter(function(m){return (m.s||0)<=10});
+ var last=sales.slice(-10).reverse().map(function(x){return '<tr><td>'+new Date(x.t).toLocaleString("bn-BD")+'</td><td>'+esc(x.c||"-")+'</td><td>'+f(x.tot)+'</td></tr>'}).join("");
+ document.getElementById("rp").innerHTML='<div class="t"><span>আজকের বিক্রি ('+bn(cnt)+'টি মেমো)</span><b>'+f(td)+'</b></div><div class="t"><span>এই মাসের বিক্রি</span><b>'+f(tm)+'</b></div>'+(low.length?'<p class="m" style="color:var(--dan)">⚠️ স্টক কম: '+low.map(function(m){return esc(m.n)+' ('+bn(m.s||0)+')'}).join(", ")+'</p>':'')+'<div class="tbl"><table><tbody>'+last+'</tbody></table></div>';
+}
+function clearSales(){if(confirm("সব বিক্রির রেকর্ড মুছে ফেলবেন?")){sales=[];try{localStorage.setItem("sales","[]")}catch(e){}report()}}
+function fill(){var m=meds[document.getElementById("sel").value];document.getElementById("p").value=m?m.p:""}
+function addMed(){
+ var n=document.getElementById("mn").value.trim(),p=parseFloat(document.getElementById("mp").value);
+ if(!n||isNaN(p)){alert("নাম ও দাম দিন");return}
+ meds.push({n:n,p:p,s:parseInt(document.getElementById("ms").value)||0});save();
+ document.getElementById("mn").value="";document.getElementById("mp").value="";document.getElementById("ms").value="";render();
+}
+function delMed(i){meds.splice(i,1);save();render()}
+function addItem(){
+ var m=meds[document.getElementById("sel").value];if(!m){alert("আগে ওষুধ সেভ করুন");return}
+ var q=parseFloat(document.getElementById("q").value),p=parseFloat(document.getElementById("p").value);
+ if(!q||isNaN(p)){alert("পিস ও দাম দিন");return}
+ var used=items.filter(function(x){return x.n===m.n}).reduce(function(a,x){return a+x.q},0);
+ if(used+q>(m.s||0)){alert("স্টকে মাত্র "+bn(m.s||0)+" পিস আছে");return}
+ items.push({n:m.n,q:q,p:p});document.getElementById("q").value=1;draw();
+}
+function delItem(i){items.splice(i,1);draw()}
+function sub(){return items.reduce(function(a,x){return a+x.q*x.p},0)}
+function calc(){
+ var s=sub(),d=parseFloat(document.getElementById("ds").value)||0;
+ document.getElementById("sub").textContent=f(s);
+ document.getElementById("tot").textContent=f(Math.max(0,s-d));
+}
+function draw(){
+ document.getElementById("tb").innerHTML=items.map(function(x,i){return '<tr><td>'+esc(x.n)+'</td><td>'+bn(x.q)+'</td><td>'+f(x.p)+'</td><td>'+f(x.q*x.p)+'</td><td><button class="g" onclick="delItem('+i+')">✕</button></td></tr>'}).join("");
+ calc();
+}
+function clearMemo(){items=[];["cn","cp"].forEach(function(id){document.getElementById(id).value=""});document.getElementById("ds").value=0;draw()}
+function doPrint(){
+ if(!items.length){alert("মেমোতে কোনো ওষুধ নেই");return}
+ var d=parseFloat(document.getElementById("ds").value)||0,s=sub();
+ var rows=items.map(function(x,i){return '<tr><td>'+bn(i+1)+'</td><td>'+esc(x.n)+'</td><td>'+bn(x.q)+'</td><td>'+f(x.p)+'</td><td>'+f(x.q*x.p)+'</td></tr>'}).join("");
+ document.getElementById("pr").innerHTML='<h2 style="text-align:center;margin:0">'+esc(shop.n||"")+'</h2><p style="text-align:center;margin:2px 0">'+esc(shop.a||"")+' '+esc(shop.ph||"")+'</p><p style="text-align:center"><b>ক্যাশ মেমো</b></p><p>তারিখ: '+new Date().toLocaleDateString("bn-BD")+'<br>নাম: '+esc(document.getElementById("cn").value)+'<br>মোবাইল: '+esc(document.getElementById("cp").value)+'</p><table><thead><tr><th>#</th><th>ওষুধ</th><th>পিস</th><th>দাম</th><th>মোট</th></tr></thead><tbody>'+rows+'</tbody></table><p>সাবটোটাল: '+f(s)+'<br>ডিসকাউন্ট: '+f(d)+'<br><b>সর্বমোট: '+f(Math.max(0,s-d))+'</b></p><p style="text-align:center">ধন্যবাদ!</p>';
+ recordSale(s,d);window.print();clearMemo();
+}
+loadShop();render();report();
+</script>
+</body>
+</html>
